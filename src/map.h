@@ -49,6 +49,9 @@ int isKey(char ch);
 int isDoor(char ch);
 int hasKey(map * map, char door);
 int isWall(map * map, int col, int row);
+void calculateKeyDistances(map * map);
+map * dupeForChildMap(map * map);
+void makeChildrenMaps(map * map);
 
 
 #endif

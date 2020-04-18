@@ -51,7 +51,7 @@ void calculateKeyDistances(map * map)
             steps[col][row]=NOT_WORKED;
         }
     }
-    
+        
     point location=map->current_location;
     steps[location.col][location.row]=0;
     int level = 0;
@@ -111,5 +111,48 @@ void calculateKeyDistances(map * map)
     {
         if (map->keys[i]==KEY_NOT_OBTAINED)
             map->steps_to_key[i]=steps[map->key_location[i].col][map->key_location[i].row];
+        else
+            map->steps_to_key[i]==NOT_WORKED;
+    }
+}
+
+map * dupeForChildMap(map * parentMap)
+{
+    map * newMap = (map *)malloc(sizeof(map));
+    newMap->max_row=parentMap->max_row;
+    newMap->max_col=parentMap->max_col;
+    for (int col=0; col<parentMap->max_col; col++)
+    {
+        for (int row=0; row<parentMap->max_row; row++)
+        {
+            newMap->layout[col][row]=parentMap->layout[col][row];
+        }
+    }
+    
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        newMap->doors[i]=parentMap->doors[i];
+        newMap->door_location[i].col=parentMap->door_location[i].col;
+        newMap->door_location[i].row=parentMap->door_location[i].row;
+        newMap->keys[i]=parentMap->keys[i];
+        newMap->key_location[i].col=parentMap->key_location[i].col;
+        newMap->key_location[i].row=parentMap->key_location[i].row;
+        newMap->child_by_key[i]=NULL;
+    }
+    newMap->parent=parentMap;
+}
+
+void makeChildrenMaps(map * parentMap)
+{
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (parentMap->steps_to_key[i]!=NOT_WORKED)
+        {
+            map * newMap = dupeForChildMap(parentMap);
+            parentMap->child_by_key[i]=newMap;
+            newMap->steps_from_parent=parentMap->steps_to_key[i];
+            newMap->keys[i]=KEY_OBTAINED;
+            newMap->current_location=parentMap->key_location[i];
+        }
     }
 }

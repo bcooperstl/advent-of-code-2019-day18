@@ -52,6 +52,7 @@ int isWall(map * map, int col, int row);
 void calculateKeyDistances(map * map);
 map * dupeForChildMap(map * map);
 void makeChildrenMaps(map * map);
+void deleteChildrenMaps(map * parentMap);
 
 
 #endif

@@ -156,3 +156,15 @@ void makeChildrenMaps(map * parentMap)
         }
     }
 }
+
+void deleteChildrenMaps(map * parentMap)
+{
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (parentMap->child_by_key[i]!=NULL)
+        {
+            deleteChildrenMaps(parentMap->child_by_key[i]);
+            free(parentMap->child_by_key[i]);
+        }
+    }
+}

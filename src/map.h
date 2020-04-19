@@ -54,8 +54,11 @@ int allKeysObtained(map * map);
 void calculateKeyDistances(map * map);
 map * dupeForChildMap(map * map);
 void makeChildrenMaps(map * map);
+void buildAndWorkChildrenMaps(map * parentMap, int level);
 void deleteChildrenMaps(map * parentMap);
 map * findBestMap(map * parentMap);
+void initStartMap(map * map);
+void print_map(map * map);
 
 
 

@@ -119,8 +119,11 @@ void calculateKeyDistances(map * map)
     }
     for (int i=0; i<MAX_KEYS; i++)
     {
-        if (map->keys[i]==KEY_NOT_OBTAINED)
+        if (map->keys[i]==KEY_NOT_OBTAINED && steps[map->key_location[i].col][map->key_location[i].row]!=NOT_WORKED)
+        {
+            printf("There are %d steps to key %c\n", steps[map->key_location[i].col][map->key_location[i].row], i+MIN_KEY);
             map->steps_to_key[i]=steps[map->key_location[i].col][map->key_location[i].row];
+        }
         else
             map->steps_to_key[i]==NOT_WORKED;
     }
@@ -152,18 +155,52 @@ map * dupeForChildMap(map * parentMap)
     newMap->parent=parentMap;
 }
 
+void initStartMap(map * startMap)
+{
+    startMap->max_row=0;
+    startMap->max_col=0;
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        startMap->doors[i]=DOES_NOT_EXIST;
+        startMap->keys[i]=DOES_NOT_EXIST;
+        startMap->child_by_key[i]=NULL;
+    }
+    startMap->parent=NULL;
+    startMap->steps_from_parent=0;
+    startMap->steps_from_start=0;
+}
+
 void makeChildrenMaps(map * parentMap)
 {
     for (int i=0; i<MAX_KEYS; i++)
     {
-        if (parentMap->steps_to_key[i]!=NOT_WORKED)
+        if (parentMap->steps_to_key[i]!=NOT_WORKED && parentMap->keys[i]==KEY_NOT_OBTAINED)
         {
+            printf("Setting map for key %c\n", i+MIN_KEY);
             map * newMap = dupeForChildMap(parentMap);
             parentMap->child_by_key[i]=newMap;
             newMap->steps_from_parent=parentMap->steps_to_key[i];
             newMap->steps_from_start=parentMap->steps_from_start+parentMap->steps_to_key[i];
             newMap->keys[i]=KEY_OBTAINED;
             newMap->current_location=parentMap->key_location[i];
+        }
+    }
+}
+
+void buildAndWorkChildrenMaps(map * parentMap, int level)
+{
+    if (allKeysObtained(parentMap))
+        return;
+    calculateKeyDistances(parentMap);
+    makeChildrenMaps(parentMap);
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (parentMap->child_by_key[i]!=NULL)
+        {
+            for (int i=0; i<level; i++)
+                printf("%c", ' ');
+            printf("%c\n", i+MIN_KEY);
+            buildAndWorkChildrenMaps(parentMap->child_by_key[i], level+1);
         }
     }
 }
@@ -200,5 +237,18 @@ map * findBestMap(map * parentMap)
                     bestMap = bestChildMap;
             }
         }
+    }
+}
+
+void print_map(map * theMap)
+{
+    printf("Map has %d rows and %d cols\n", theMap->max_row, theMap->max_col);
+    for (int row=0; row<theMap->max_row; row++)
+    {
+        for (int col=0; col<theMap->max_col; col++)
+        {
+            printf("%c", theMap->layout[col][row]);
+        }
+        printf("\n");
     }
 }

@@ -41,6 +41,16 @@ int isWall(map * map, int col, int row)
     exit(-1);
 }
 
+int allKeysObtained(map * map)
+{
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (map->keys[i]==KEY_NOT_OBTAINED)
+            return 0;
+    }
+    return 1;
+}
+
 void calculateKeyDistances(map * map)
 {
     int steps[MAX_MAP_DIMENSION][MAX_MAP_DIMENSION];
@@ -151,6 +161,7 @@ void makeChildrenMaps(map * parentMap)
             map * newMap = dupeForChildMap(parentMap);
             parentMap->child_by_key[i]=newMap;
             newMap->steps_from_parent=parentMap->steps_to_key[i];
+            newMap->steps_from_start=parentMap->steps_from_start+parentMap->steps_to_key[i];
             newMap->keys[i]=KEY_OBTAINED;
             newMap->current_location=parentMap->key_location[i];
         }
@@ -165,6 +176,29 @@ void deleteChildrenMaps(map * parentMap)
         {
             deleteChildrenMaps(parentMap->child_by_key[i]);
             free(parentMap->child_by_key[i]);
+        }
+    }
+}
+
+map * findBestMap(map * parentMap)
+{
+    map * bestMap=NULL;
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        map * childMap = parentMap->child_by_key[i];
+        if (childMap)
+        {
+            if (allKeysObtained(childMap))
+            {
+                if (bestMap == NULL || (childMap->steps_from_start < bestMap->steps_from_start))
+                    bestMap = childMap;
+            }
+            else
+            {
+                map * bestChildMap = findBestMap(childMap);
+                if (bestMap == NULL || (bestChildMap->steps_from_start < bestMap->steps_from_start))
+                    bestMap = bestChildMap;
+            }
         }
     }
 }

@@ -40,6 +40,7 @@ struct map
     int steps_to_key[MAX_KEYS];
     struct map * parent;
     int steps_from_parent;
+    int steps_from_start;
     struct map * child_by_key[MAX_KEYS];
 };
 
@@ -49,10 +50,13 @@ int isKey(char ch);
 int isDoor(char ch);
 int hasKey(map * map, char door);
 int isWall(map * map, int col, int row);
+int allKeysObtained(map * map);
 void calculateKeyDistances(map * map);
 map * dupeForChildMap(map * map);
 void makeChildrenMaps(map * map);
 void deleteChildrenMaps(map * parentMap);
+map * findBestMap(map * parentMap);
+
 
 
 #endif

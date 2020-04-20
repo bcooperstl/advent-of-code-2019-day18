@@ -77,9 +77,9 @@ int main (int argc, char * argv[])
     print_map(&startMap);
     
     buildAndWorkChildrenMaps(&startMap,0);
-    bestMap=findBestMap(&startMap);
+    //bestMap=findBestMap(&startMap);
     
-    printf("The best distance is %d\n", bestMap->steps_from_start);
+    printf("The best distance is %d\n", startMap.best_child_map_steps);
     
     deleteChildrenMaps(&startMap);
     

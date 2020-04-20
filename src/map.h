@@ -41,7 +41,10 @@ struct map
     struct map * parent;
     int steps_from_parent;
     int steps_from_start;
+    int best_child_map_steps;
     struct map * child_by_key[MAX_KEYS];
+    int steps_from_start_to_key[MAX_KEYS];
+    int steps_from_key_to_key[MAX_KEYS][MAX_KEYS]; // order is from, to
 };
 
 typedef struct map map;
@@ -49,17 +52,16 @@ typedef struct map map;
 int isKey(char ch);
 int isDoor(char ch);
 int hasKey(map * map, char door);
-int isWall(map * map, int col, int row);
+int isWall(map * map, int col, int row, int doors_as_walls);
 int allKeysObtained(map * map);
-void calculateKeyDistances(map * map);
+void calculateStartToKeyDistances(map * map);
+void calculateKeyToKeyDistances(map * map);
 map * dupeForChildMap(map * map);
 void makeChildrenMaps(map * map);
 void buildAndWorkChildrenMaps(map * parentMap, int level);
 void deleteChildrenMaps(map * parentMap);
-map * findBestMap(map * parentMap);
+int findBestMapSteps(map * parentMap);
 void initStartMap(map * map);
 void print_map(map * map);
-
-
 
 #endif

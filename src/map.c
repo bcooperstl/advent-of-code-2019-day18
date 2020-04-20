@@ -18,7 +18,7 @@ int hasKey(map * map, char door)
     return (map->keys[door-MIN_DOOR]==KEY_OBTAINED ? 1 : 0);
 }
 
-int isWall(map * map, int col, int row)
+int isWall(map * map, int col, int row, int doors_are_walls)
 {
     if (col < 0 || col >= map->max_col || row < 0 || row >= map->max_row)
     {
@@ -34,6 +34,8 @@ int isWall(map * map, int col, int row)
         return 0;
     if (isDoor(val))
     {
+        if (!doors_are_walls)
+            return 0;
         // doors are walls when we don't have the keys
         return !hasKey(map, val);
     }
@@ -51,9 +53,9 @@ int allKeysObtained(map * map)
     return 1;
 }
 
-void calculateKeyDistances(map * map)
+void calculateStartToKeyDistances(map * map)
 {
-    printf("calculating key distances for map %d\n", map);
+    printf("calculating start-to-key distances for map %d\n", map);
     printf("key values are :\n");
     for (int i=0; i<MAX_KEYS; i++)
     {
@@ -62,6 +64,7 @@ void calculateKeyDistances(map * map)
             printf("  %c - %d at col=%d row=%d\n", i+MIN_KEY, map->keys[i], map->key_location[i].col, map->key_location[i].row);
         }
     }
+
     int steps[MAX_MAP_DIMENSION][MAX_MAP_DIMENSION];
     for (int col=0; col<map->max_col; col++)
     {
@@ -88,7 +91,7 @@ void calculateKeyDistances(map * map)
                     // up
                     if (row > 0)
                     {
-                        if ((!isWall(map, col, row-1)) && (steps[col][row-1]==NOT_WORKED))
+                        if ((!isWall(map, col, row-1, 1)) && (steps[col][row-1]==NOT_WORKED))
                         {
                             workToDo=1;
                             steps[col][row-1]=nextLevel;
@@ -97,7 +100,7 @@ void calculateKeyDistances(map * map)
                     // down
                     if (row < map->max_row-1)
                     {
-                        if ((!isWall(map, col, row+1)) && (steps[col][row+1]==NOT_WORKED))
+                        if ((!isWall(map, col, row+1, 1)) && (steps[col][row+1]==NOT_WORKED))
                         {
                             workToDo=1;
                             steps[col][row+1]=nextLevel;
@@ -106,7 +109,7 @@ void calculateKeyDistances(map * map)
                     // left
                     if (col > 0)
                     {
-                        if ((!isWall(map, col-1, row)) && (steps[col-1][row]==NOT_WORKED))
+                        if ((!isWall(map, col-1, row, 1)) && (steps[col-1][row]==NOT_WORKED))
                         {
                             workToDo=1;
                             steps[col-1][row]=nextLevel;
@@ -115,7 +118,7 @@ void calculateKeyDistances(map * map)
                     // right
                     if (col < map->max_col-1)
                     {
-                        if ((!isWall(map, col+1, row)) && (steps[col+1][row]==NOT_WORKED))
+                        if ((!isWall(map, col+1, row, 1)) && (steps[col+1][row]==NOT_WORKED))
                         {
                             workToDo=1;
                             steps[col+1][row]=nextLevel;
@@ -128,14 +131,111 @@ void calculateKeyDistances(map * map)
     }
     for (int i=0; i<MAX_KEYS; i++)
     {
-        if (map->keys[i]==KEY_NOT_OBTAINED && steps[map->key_location[i].col][map->key_location[i].row]!=NOT_WORKED)
+        if (map->keys[i]!=DOES_NOT_EXIST)
         {
-            printf("There are %d steps to key %c\n", steps[map->key_location[i].col][map->key_location[i].row], i+MIN_KEY);
-            map->steps_to_key[i]=steps[map->key_location[i].col][map->key_location[i].row];
+            if(steps[map->key_location[i].col][map->key_location[i].row]!=NOT_WORKED)
+            {
+                printf("There are %d steps from the start to key %c\n", steps[map->key_location[i].col][map->key_location[i].row], i+MIN_KEY);
+                map->steps_from_start_to_key[i]=steps[map->key_location[i].col][map->key_location[i].row];
+            }
+            else
+            {
+                printf("Cannot reach key %c from the start\n", i+MIN_KEY);
+                map->steps_from_start_to_key[i]=NOT_WORKED;
+            }
         }
-        else
+    }
+}
+
+void calculateKeyToKeyDistances(map * map)
+{
+    printf("calculating key-to-key distances for map %d\n", map);
+    printf("key values are :\n");
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (map->keys[i]!=DOES_NOT_EXIST)
         {
-            map->steps_to_key[i]=NOT_WORKED;
+            printf(" working on distances from key %c - %d at col=%d row=%d\n", i+MIN_KEY, map->keys[i], map->key_location[i].col, map->key_location[i].row);
+            int steps[MAX_MAP_DIMENSION][MAX_MAP_DIMENSION];
+            for (int col=0; col<map->max_col; col++)
+            {
+                for (int row=0; row<map->max_row; row++)
+                {
+                    steps[col][row]=NOT_WORKED;
+                }
+            }
+                
+            point location=map->current_location;
+            steps[location.col][location.row]=0;
+            int level = 0;
+            int workToDo = 1;
+            while(workToDo != 0)
+            {
+                int nextLevel=level+1;
+                workToDo=0;
+                for (int col=0; col<map->max_col; col++)
+                {
+                    for (int row=0; row<map->max_row; row++)
+                    {
+                        if (steps[col][row]==level)
+                        {
+                            // up
+                            if (row > 0)
+                            {
+                                if ((!isWall(map, col, row-1, 0)) && (steps[col][row-1]==NOT_WORKED))
+                                {
+                                    workToDo=1;
+                                    steps[col][row-1]=nextLevel;
+                                }
+                            }
+                            // down
+                            if (row < map->max_row-1)
+                            {
+                                if ((!isWall(map, col, row+1, 0)) && (steps[col][row+1]==NOT_WORKED))
+                                {
+                                    workToDo=1;
+                                    steps[col][row+1]=nextLevel;
+                                }
+                            }
+                            // left
+                            if (col > 0)
+                            {
+                                if ((!isWall(map, col-1, row, 0)) && (steps[col-1][row]==NOT_WORKED))
+                                {
+                                    workToDo=1;
+                                    steps[col-1][row]=nextLevel;
+                                }
+                            }
+                            // right
+                            if (col < map->max_col-1)
+                            {
+                                if ((!isWall(map, col+1, row, 0)) && (steps[col+1][row]==NOT_WORKED))
+                                {
+                                    workToDo=1;
+                                    steps[col+1][row]=nextLevel;
+                                }
+                            }
+                        }
+                    }
+                }
+                level=nextLevel;
+            }
+            for (int j=0; j<MAX_KEYS; j++)
+            {
+                if (map->keys[j]!=DOES_NOT_EXIST)
+                {
+                    if (steps[map->key_location[i].col][map->key_location[i].row]!=NOT_WORKED)
+                    {
+                        printf("There are %d steps from key %c to key %c\n", steps[map->key_location[j].col][map->key_location[j].row], i+MIN_KEY, j+MIN_KEY);
+                        map->steps_from_key_to_key[i][j]=steps[map->key_location[i].col][map->key_location[i].row];
+                    }
+                    else
+                    {
+                        printf("Cannot reach key %c from key %c\n", j+MIN_KEY, i+MIN_KEY);
+                        map->steps_from_key_to_key[i][j]=NOT_WORKED;
+                    }
+                }
+            }
         }
     }
 }
@@ -164,6 +264,7 @@ map * dupeForChildMap(map * parentMap)
         newMap->child_by_key[i]=NULL;
     }
     newMap->parent=parentMap;
+    newMap->best_child_map_steps=999999999;
 }
 
 void initStartMap(map * startMap)
@@ -179,6 +280,7 @@ void initStartMap(map * startMap)
     startMap->parent=NULL;
     startMap->steps_from_parent=0;
     startMap->steps_from_start=0;
+    startMap->best_child_map_steps=999999999;
 }
 
 void makeChildrenMaps(map * parentMap)
@@ -187,7 +289,7 @@ void makeChildrenMaps(map * parentMap)
     {
         if (parentMap->steps_to_key[i]!=NOT_WORKED && parentMap->keys[i]==KEY_NOT_OBTAINED)
         {
-            printf("Setting map for key %c\n", i+MIN_KEY);
+//            printf("Setting map for key %c\n", i+MIN_KEY);
             map * newMap = dupeForChildMap(parentMap);
             parentMap->child_by_key[i]=newMap;
             newMap->steps_from_parent=parentMap->steps_to_key[i];
@@ -207,27 +309,33 @@ void makeChildrenMaps(map * parentMap)
 
 void buildAndWorkChildrenMaps(map * parentMap, int level)
 {
-    printf("Working the following map at level %d\n", level);
-    print_map(parentMap);
+    //printf("Working the following map at level %d\n", level);
+    //print_map(parentMap);
     if (allKeysObtained(parentMap))
     {
-        printf("All keys obtained\n");
+        //printf("All keys obtained\n");
         return;
     }
 
-    calculateKeyDistances(parentMap);
+    calculateStartToKeyDistances(parentMap);
+    calculateKeyToKeyDistances(parentMap);
     makeChildrenMaps(parentMap);
         
     for (int i=0; i<MAX_KEYS; i++)
     {
         if (parentMap->child_by_key[i]!=NULL)
         {
-            for (int i=0; i<level; i++)
-                printf("%c", ' ');
-            printf("%c\n", i+MIN_KEY);
-            buildAndWorkChildrenMaps(parentMap->child_by_key[i], level+1);
+            if (level < 8)
+            {
+                for (int i=0; i<level; i++)
+                    printf("%c", ' ');
+                printf("%c\n", i+MIN_KEY);
+            }
+          //  buildAndWorkChildrenMaps(parentMap->child_by_key[i], level+1);
         }
     }
+    parentMap->best_child_map_steps=findBestMapSteps(parentMap);
+    deleteChildrenMaps(parentMap);
 }
 
 void deleteChildrenMaps(map * parentMap)
@@ -236,36 +344,28 @@ void deleteChildrenMaps(map * parentMap)
     {
         if (parentMap->child_by_key[i]!=NULL)
         {
-            deleteChildrenMaps(parentMap->child_by_key[i]);
+            //deleteChildrenMaps(parentMap->child_by_key[i]);
             free(parentMap->child_by_key[i]);
+            parentMap->child_by_key[i]=NULL;
         }
     }
 }
 
-map * findBestMap(map * parentMap)
+int findBestMapSteps(map * parentMap)
 {
-    print_map(parentMap);
-    map * bestMap=NULL;
+    int bestSteps=999999999;
     for (int i=0; i<MAX_KEYS; i++)
     {
         map * childMap = parentMap->child_by_key[i];
         if (childMap != NULL)
         {
-            //print_map(childMap);
             if (allKeysObtained(childMap))
-            {
-                if (bestMap == NULL || (childMap->steps_from_start < bestMap->steps_from_start))
-                    bestMap = childMap;
-            }
-            else
-            {
-                map * bestChildMap = findBestMap(childMap);
-                if (bestMap == NULL || (bestChildMap->steps_from_start < bestMap->steps_from_start))
-                    bestMap = bestChildMap;
-            }
+                childMap->best_child_map_steps = childMap->steps_from_start;
+            if (childMap->best_child_map_steps < bestSteps)
+                bestSteps=childMap->best_child_map_steps;
         }
     }
-    return bestMap;
+    return bestSteps;
 }
 
 void print_map(map * theMap)

@@ -85,7 +85,6 @@ void calculateKeyDistances(map * map)
             {
                 if (steps[col][row]==level)
                 {
-                    printf("steps - working col=%d,row=%d\n", col, row);
                     // up
                     if (row > 0)
                     {
@@ -136,7 +135,7 @@ void calculateKeyDistances(map * map)
         }
         else
         {
-            map->steps_to_key[i]==NOT_WORKED;
+            map->steps_to_key[i]=NOT_WORKED;
         }
     }
 }
@@ -192,13 +191,16 @@ void makeChildrenMaps(map * parentMap)
             map * newMap = dupeForChildMap(parentMap);
             parentMap->child_by_key[i]=newMap;
             newMap->steps_from_parent=parentMap->steps_to_key[i];
+            newMap->steps_from_parent=parentMap->steps_to_key[i];
             newMap->steps_from_start=parentMap->steps_from_start+parentMap->steps_to_key[i];
             newMap->keys[i]=KEY_OBTAINED;
             newMap->layout[parentMap->current_location.col][parentMap->current_location.row]=SPACE;
+            if (parentMap->doors[i]==DOOR_EXISTS)
+                newMap->layout[parentMap->door_location[i].col][parentMap->door_location[i].row]=SPACE;
             newMap->current_location=parentMap->key_location[i];
             newMap->layout[newMap->current_location.col][newMap->current_location.row]=ME;
-            printf("Set map is :\n");
-            print_map(newMap);
+            //printf("Set map is :\n");
+            //print_map(newMap);
         }
     }
 }
@@ -208,9 +210,14 @@ void buildAndWorkChildrenMaps(map * parentMap, int level)
     printf("Working the following map at level %d\n", level);
     print_map(parentMap);
     if (allKeysObtained(parentMap))
+    {
+        printf("All keys obtained\n");
         return;
+    }
+
     calculateKeyDistances(parentMap);
     makeChildrenMaps(parentMap);
+        
     for (int i=0; i<MAX_KEYS; i++)
     {
         if (parentMap->child_by_key[i]!=NULL)
@@ -237,12 +244,14 @@ void deleteChildrenMaps(map * parentMap)
 
 map * findBestMap(map * parentMap)
 {
+    print_map(parentMap);
     map * bestMap=NULL;
     for (int i=0; i<MAX_KEYS; i++)
     {
         map * childMap = parentMap->child_by_key[i];
-        if (childMap)
+        if (childMap != NULL)
         {
+            //print_map(childMap);
             if (allKeysObtained(childMap))
             {
                 if (bestMap == NULL || (childMap->steps_from_start < bestMap->steps_from_start))
@@ -256,6 +265,7 @@ map * findBestMap(map * parentMap)
             }
         }
     }
+    return bestMap;
 }
 
 void print_map(map * theMap)

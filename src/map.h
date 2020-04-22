@@ -9,6 +9,13 @@
 #define KEY_NOT_OBTAINED 2
 #define DOOR_EXISTS 3
 
+#define KEY_NOT_REQUIRED 0
+#define KEY_REQUIRED 1
+
+#define VISITED 4
+#define AVAILABLE 5
+#define NOT_AVAILABLE 6
+
 #define NOT_WORKED -1
 
 #define WALL '#'
@@ -36,6 +43,7 @@ struct map
     int doors[MAX_KEYS]; // 26 character array for A-Z
     point door_location[MAX_KEYS];
     int keys[MAX_KEYS]; // 26 character array for a-z
+    int doors_blocking_keys[MAX_KEYS][MAX_KEYS];
     point key_location[MAX_KEYS];
     int steps_to_key[MAX_KEYS];
     struct map * parent;
@@ -63,5 +71,6 @@ void deleteChildrenMaps(map * parentMap);
 int findBestMapSteps(map * parentMap);
 void initStartMap(map * map);
 void print_map(map * map);
+int recusrive_work_it(map * map, int * current_path, int current_path_len, int current_path_steps, int best_path_steps);
 
 #endif

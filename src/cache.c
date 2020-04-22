@@ -13,6 +13,7 @@ void init_cache(cache * c)
             c->nodes_by_position_num_following[i][j]=NULL;
         }
     }
+    c->full_case_node=NULL;
 }
 
 void delete_cache(cache * c)
@@ -30,9 +31,11 @@ void delete_cache(cache * c)
             }
         }
     }
+    if (c->full_case_node != NULL)
+        free(c->full_case_node);
 }
 
-void insert(cache * c, int current_position, int * keys_to_get, int best_steps)
+void insert_cache(cache * c, int current_position, int * keys_to_get, int best_steps)
 {
     int key_count=0;
     cache_node * n = (cache_node *)malloc(sizeof(cache_node));
@@ -45,21 +48,29 @@ void insert(cache * c, int current_position, int * keys_to_get, int best_steps)
     }
     n->best_steps=best_steps;
     n->next=NULL;
-    cache_node * current=c->nodes_by_position_num_following[current_position-MIN_KEY][key_count];
-    if (current==NULL)
-    {
-        c->nodes_by_position_num_following[current_position-MIN_KEY][key_count]=n;
-    }
+    
+    if (current_position=='@')
+        c->full_case_node=n;
     else
     {
-        while (current->next != NULL)
-            current=current->next;
-        current->next=n;
+        cache_node * current=c->nodes_by_position_num_following[current_position-MIN_KEY][key_count];
+        if (current==NULL)
+        {
+            c->nodes_by_position_num_following[current_position-MIN_KEY][key_count]=n;
+        }
+        else
+        {
+            while (current->next != NULL)
+                current=current->next;
+            current->next=n;
+        }
     }
 }
 
-cache_node * find(cache * c, int current_position, int * keys_to_get)
+cache_node * find_cache(cache * c, int current_position, int * keys_to_get)
 {
+    if (current_position=='@')
+        return c->full_case_node;
     int key_count=0;
     cache_node * n = (cache_node *)malloc(sizeof(cache_node));
     n->current_position=current_position;

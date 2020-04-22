@@ -26,6 +26,8 @@
 #define MIN_DOOR 'A'
 #define MAX_DOOR 'Z'
 
+typedef struct cache cache;
+
 struct point {
     int col;
     int row;
@@ -66,11 +68,13 @@ void calculateStartToKeyDistances(map * map);
 void calculateKeyToKeyDistances(map * map);
 map * dupeForChildMap(map * map);
 void makeChildrenMaps(map * map);
-void buildAndWorkChildrenMaps(map * parentMap, int level);
+void buildAndWorkChildrenMaps(map * parentMap, int level, cache * myCache);
 void deleteChildrenMaps(map * parentMap);
 int findBestMapSteps(map * parentMap);
 void initStartMap(map * map);
 void print_map(map * map);
+int build_keys_to_get(map * parentMap, int * current_path, int current_path_len, int * keys_to_get);
 int recusrive_work_it(map * map, int * current_path, int current_path_len, int current_path_steps, int best_path_steps);
+int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, int current_path_len);
 
 #endif

@@ -15,6 +15,7 @@ typedef struct cache_node cache_node;
 
 struct cache
 {
+    cache_node * full_case_node;
     cache_node * nodes_by_position_num_following[MAX_KEYS][MAX_KEYS]; // first index is position. second index is the number of keys in the steps.
 };
 
@@ -22,5 +23,7 @@ typedef struct cache cache;
 
 void init_cache(cache * cache);
 void delete_cache(cache * cache);
+void insert_cache(cache * c, int current_position, int * keys_to_get, int best_steps);
+cache_node * find_cache(cache * c, int current_position, int * keys_to_get);
 
 #endif

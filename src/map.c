@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "map.h"
+#include "cache.h"
 
 int isKey(char ch)
 {
@@ -352,7 +354,7 @@ void makeChildrenMaps(map * parentMap)
     }
 }
 
-void buildAndWorkChildrenMaps(map * parentMap, int level)
+void buildAndWorkChildrenMaps(map * parentMap, int level, cache * myCache)
 {
     //printf("Working the following map at level %d\n", level);
     //print_map(parentMap);
@@ -365,7 +367,7 @@ void buildAndWorkChildrenMaps(map * parentMap, int level)
     calculateStartToKeyDistances(parentMap);
     calculateKeyToKeyDistances(parentMap);
     
-    int best_steps=recusrive_work_it(parentMap, NULL, 0, 0, 999999999);
+    int best_steps=recursive_build_cache(parentMap, myCache, NULL, 0);
     printf("best_steps after recursion is %d\n", best_steps);
     //makeChildrenMaps(parentMap);
         
@@ -373,24 +375,127 @@ void buildAndWorkChildrenMaps(map * parentMap, int level)
     //deleteChildrenMaps(parentMap);
 }
 
+int build_keys_to_get(map * parentMap, int * current_path, int current_path_len, int * keys_to_get)
+{
+    int num_remaining=0;
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        keys_to_get[i]=parentMap->keys[i];
+        if (keys_to_get[i]!=DOES_NOT_EXIST)
+            num_remaining++;
+    }
+    for (int i=0; i<current_path_len; i++)
+    {
+        keys_to_get[i-MIN_KEY]=KEY_OBTAINED;
+        num_remaining--;
+    }
+    return num_remaining;
+}
+
+int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, int current_path_len)
+{
+    int keys_to_get[26];
+    int num_keys_to_get=build_keys_to_get(parentMap, current_path, current_path_len, keys_to_get);
+    int current_position=(current_path_len==0?'@':current_path[current_path_len-1]);
+    printf("Current path is :");
+    for (int i=0; i<current_path_len; i++)
+        printf("%c", current_path[i]);
+    printf("\n");
+    printf("There are %d keys to get at position %c\n", num_keys_to_get, current_position);
+    if (num_keys_to_get==1) // special case - 1 key to get. just insert the distance from the current position to it.
+    {
+        for (int i=0; i<MAX_KEYS; i++)
+        {
+            if (keys_to_get[i]==KEY_NOT_OBTAINED)
+                return parentMap->steps_from_key_to_key[current_position-MIN_KEY][i];
+        }
+    }
+    // if here, num_keys_to_get is 2 or greater
+    //    first check if there is a cache hit
+    cache_node * hit = find_cache(myCache, current_position, keys_to_get);
+    if (hit != NULL)
+        return hit->best_steps;
+    // if here, we have a cache miss. Need to recusrively go in, one option at a time.
+    int next_path[MAX_KEYS];
+    int next_path_len;
+    int lowest_steps=999999999;
+    
+    for (int i=0; i<current_path_len; i++)
+        next_path[i]=current_path[i];
+    next_path_len=current_path_len+1;
+    
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (keys_to_get[i]!=KEY_NOT_OBTAINED)
+            continue;
+
+        int not_required_key=0;
+        for (int j=0; j<MAX_KEYS; j++)
+        {
+            //TODO: fix this
+            if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
+            {
+                printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
+                not_required_key=1;
+                break;
+            }
+        }
+        if (not_required_key==1)
+            continue;
+
+        // set up the next step
+        int steps_current_to_next=0;
+        if (current_path_len==0)
+            steps_current_to_next=parentMap->steps_from_start_to_key[i]; // the steps from start to i
+        else 
+            steps_current_to_next=parentMap->steps_from_key_to_key[current_position-MIN_KEY][i]; // the steps from the last position to get to i
+        keys_to_get[i]=KEY_OBTAINED;
+        next_path[next_path_len-1]=i+MIN_KEY;
+        int steps_next_to_end=recursive_build_cache(parentMap, myCache, next_path, next_path_len);
+        int total_steps=steps_current_to_next+steps_next_to_end;
+        if (total_steps < lowest_steps)
+            lowest_steps = total_steps;
+        
+        // reset off the next step
+        keys_to_get[i]==KEY_NOT_OBTAINED;
+    }
+    // now we have the lowest steps at this point, so add it to the cache
+    insert_cache(myCache, current_position, keys_to_get, lowest_steps);
+    return lowest_steps;
+}
+
+
 // current_path is list of keys
 int recusrive_work_it(map * map, int * current_path, int current_path_len, int current_path_steps, int best_path_steps)
 {
-    printf("best path steps is %d\n", best_path_steps);
-    printf("current path length is %d - ", current_path_len);
+//    printf("best path steps is %d\n", best_path_steps);
+    char path[27];
     int avail_steps[MAX_KEYS];
     int next_path[MAX_KEYS];
+    int keys_to_get[MAX_KEYS];
+    
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        keys_to_get[i]=map->keys[i]; // mark all of them as they were at the start
+        avail_steps[i]=NOT_AVAILABLE;
+    }
+    
     for (int i=0; i<current_path_len; i++)
     {
-        printf("%c", current_path[i]);
+        path[i]=current_path[i];
         avail_steps[current_path[i]-MIN_KEY]=VISITED;
+        keys_to_get[current_path[i]-MIN_KEY]=KEY_OBTAINED;
         next_path[i]=current_path[i];
     }
-    printf("\n");
+    path[current_path_len]='\0';
+//    printf("current path length is %d - %s\n", current_path_len, path);
     for (int i=0; i<MAX_KEYS; i++)
     {
         if (avail_steps[i]==VISITED)
+        {
+//            printf("key %c is visited\n", i+MIN_KEY);
             continue;
+        }
         
         if (map->keys[i]==DOES_NOT_EXIST)
             avail_steps[i]=DOES_NOT_EXIST;
@@ -401,11 +506,15 @@ int recusrive_work_it(map * map, int * current_path, int current_path_len, int c
             {
                 if (map->doors_blocking_keys[i][j]==KEY_REQUIRED && avail_steps[j]!=VISITED)
                 {
-                    printf("key %c is not available because key %c has not been visited  door_blocking_keys[i][j]=%d avail-steps[j]=%d\n", i+MIN_KEY, j+MIN_KEY, map->doors_blocking_keys[i][j], avail_steps[j]);
+//                    printf("key %c is not available because key %c has not been visited  door_blocking_keys[i][j]=%d avail-steps[j]=%d\n", i+MIN_KEY, j+MIN_KEY, map->doors_blocking_keys[i][j], avail_steps[j]);
                     avail_steps[i]=NOT_AVAILABLE;
                     break;
                 }
             }
+//            if (avail_steps[i]==AVAILABLE)
+//            {
+//                printf("key %c is available\n", i+MIN_KEY);
+//            }
         }
     }
 
@@ -422,37 +531,40 @@ int recusrive_work_it(map * map, int * current_path, int current_path_len, int c
         {
             has_avail_steps=1;
             next_path[current_path_len]=i+MIN_KEY;
-            printf("Checking path ");
-            for (int j=0; j<next_path_len; j++)
-            {
-                printf("%c", next_path[j]);
-            }
-            printf("\n");
+//            printf("Checking path ");
+//            for (int j=0; j<next_path_len; j++)
+//            {
+//                printf("%c", next_path[j]);
+//            }
+//            printf("\n");
             int next_path_steps=current_path_steps;
             if (next_path_len==1) // moving from start
             {
                 next_path_steps+=map->steps_from_start_to_key[i];
-                printf("Adding %d steps from start to %c to get new total of %d\n", map->steps_from_start_to_key[i], i+MIN_KEY, next_path_steps);
+//                printf("Adding %d steps from start to %c to get new total of %d\n", map->steps_from_start_to_key[i], i+MIN_KEY, next_path_steps);
             }
             else
             {
-                printf("current position is %d, i is %d with steps %d\n", current_position-MIN_KEY, i, map->steps_from_key_to_key[current_position-MIN_KEY][i]);
                 next_path_steps+=map->steps_from_key_to_key[current_position-MIN_KEY][i];
-                printf("Adding %d steps from %c to %c to get new total of %d\n", map->steps_from_key_to_key[current_position-MIN_KEY][i], current_position, i+MIN_KEY, next_path_steps);
+//                printf("Adding %d steps from %c to %c to get new total of %d\n", map->steps_from_key_to_key[current_position-MIN_KEY][i], current_position, i+MIN_KEY, next_path_steps);
             }
             if (next_path_steps >= best_path_steps)
             {
-                printf("   skipping from here; next path steps %d is greater than best path steps of %d\n", next_path_steps, best_path_steps);
+//                printf("   skipping from here; next path steps %d is greater than best path steps of %d\n", next_path_steps, best_path_steps);
                 continue;
             }
             best_path_steps = recusrive_work_it(map, next_path, next_path_len, next_path_steps, best_path_steps);
-            printf("after recursion call, best_path_steps is %d\n", best_path_steps);
+//            printf("after recursion call, best_path_steps is %d\n", best_path_steps);
         }
     }
     
     if (!has_avail_steps)
+    {
+        if (best_path_steps > current_path_steps)
+            printf("the best path steps under %s is %d\n", path, best_path_steps);
+            
         best_path_steps=current_path_steps;
-    
+    }
     return best_path_steps;
 }
 

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "map.h"
+#include "cache.h"
 
 int main (int argc, char * argv[])
 {
@@ -14,7 +15,11 @@ int main (int argc, char * argv[])
     map startMap;
     initStartMap(&startMap);
     
+    cache myCache;
+    init_cache(&myCache);
+    
     map * bestMap = NULL;
+    
     
     if (argc != 2)
     {
@@ -76,12 +81,13 @@ int main (int argc, char * argv[])
     
     print_map(&startMap);
     
-    buildAndWorkChildrenMaps(&startMap,0);
+    buildAndWorkChildrenMaps(&startMap,0,&myCache);
     //bestMap=findBestMap(&startMap);
     
     printf("The best distance is %d\n", startMap.best_child_map_steps);
     
     deleteChildrenMaps(&startMap);
+    delete_cache(&myCache);
     
     return 0;
 }

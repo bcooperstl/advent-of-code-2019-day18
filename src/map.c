@@ -185,7 +185,7 @@ void calculateStartToKeyDistances(map * map)
                 if (isDoor(map->layout[current_location.col][current_location.row]))
                 {
                     map->doors_blocking_keys[i][map->layout[current_location.col][current_location.row]-MIN_DOOR]=KEY_REQUIRED;
-                    printf("Key %c requires door %c to be unlocked.\n", i+MIN_KEY, map->layout[current_location.col][current_location.row]);
+                    printf("Key %c requires door %c to be unlocked. Setting doors_blocking_keys[%d][%d] to KEY_REQUIRED(%d)\n", i+MIN_KEY, map->layout[current_location.col][current_location.row], i, map->layout[current_location.col][current_location.row]-MIN_DOOR, KEY_REQUIRED);
                 }
             }
             
@@ -428,10 +428,18 @@ int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, 
     {
         if (keys_to_get[i]!=KEY_NOT_OBTAINED)
             continue;
+        printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
 
         int not_required_key=0;
         for (int j=0; j<MAX_KEYS; j++)
         {
+            if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED)
+            {
+                printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
+                printf("keys_to_get[j] is %d. KEY_OBTAINED is %d\n", keys_to_get[j], KEY_OBTAINED);
+                //printf(doors_blocking_keys);
+            }
+            
             //TODO: fix this
             if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
             {
@@ -451,6 +459,11 @@ int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, 
             steps_current_to_next=parentMap->steps_from_key_to_key[current_position-MIN_KEY][i]; // the steps from the last position to get to i
         keys_to_get[i]=KEY_OBTAINED;
         next_path[next_path_len-1]=i+MIN_KEY;
+        printf("Calling recusrively from path: ");
+        for (int i=0; i<current_path_len; i++)
+            printf("%c", current_path[i]);
+        printf("\n");
+        
         int steps_next_to_end=recursive_build_cache(parentMap, myCache, next_path, next_path_len);
         int total_steps=steps_current_to_next+steps_next_to_end;
         if (total_steps < lowest_steps)

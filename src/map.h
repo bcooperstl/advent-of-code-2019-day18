@@ -26,6 +26,13 @@
 #define MIN_DOOR 'A'
 #define MAX_DOOR 'Z'
 
+#define NUM_SUBMAPS 4
+#define TOP_LEFT 0
+#define TOP_RIGHT 1
+#define BOTTOM_LEFT 2
+#define BOTTOM_RIGHT 3
+#define NONE -1
+
 typedef struct cache cache;
 
 struct point {
@@ -59,6 +66,24 @@ struct map
 
 typedef struct map map;
 
+struct multi_map
+{
+    struct map submaps[NUM_SUBMAPS];
+    int key_submaps[MAX_KEYS];
+    int door_submaps[MAX_KEYS];
+    int best_multi_map_steps;
+};
+
+typedef struct multi_map multi_map;
+
+struct multi_paths
+{
+    int current_paths[NUM_SUBMAPS][MAX_KEYS];
+    int current_path_lens[NUM_SUBMAPS];
+};
+
+typedef struct multi_paths multi_paths;
+
 int isKey(char ch);
 int isDoor(char ch);
 int hasKey(map * map, char door);
@@ -73,8 +98,13 @@ void deleteChildrenMaps(map * parentMap);
 int findBestMapSteps(map * parentMap);
 void initStartMap(map * map);
 void print_map(map * map);
+void print_multi_map(multi_map * map);
 int build_keys_to_get(map * parentMap, int * current_path, int current_path_len, int * keys_to_get);
 int recusrive_work_it(map * map, int * current_path, int current_path_len, int current_path_steps, int best_path_steps);
 int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, int current_path_len);
+void split_map_to_multi_maps(map * parentMap, multi_map * childMaps);
+int build_multi_keys_to_get(multi_map * multiMap, multi_paths * paths, int * keys_to_get);
+void buildAndWorkMultiMaps(multi_map * multiMap, cache * myCache);
+void dupe_multi_paths(multi_paths * target, multi_paths * source);
 
 #endif

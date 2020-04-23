@@ -628,3 +628,236 @@ void print_map(map * theMap)
         printf("\n");
     }
 }
+
+void print_multi_map(multi_map * theMap)
+{
+    printf("Top-Left:\n");
+    print_map(&theMap->submaps[0]);
+    printf("Top-Right:\n");
+    print_map(&theMap->submaps[1]);
+    printf("Bottom-Left:\n");
+    print_map(&theMap->submaps[2]);
+    printf("Bottom-Right:\n");
+    print_map(&theMap->submaps[3]);
+}
+
+void load_submap(map * parentMap, map * childMap, int minCol, int maxCol, int minRow, int maxRow)
+{
+    int colOffset=minCol;
+    int rowOffset=minRow;
+    
+    childMap->max_col=maxCol-minCol;
+    childMap->max_row=maxRow-minRow;
+    
+    for (int col=minCol; col<maxCol; col++)
+    {
+        for (int row=minRow; row<maxRow; row++)
+        {
+            char value=parentMap->layout[col][row];
+            childMap->layout[col-colOffset][row-rowOffset]=value;
+            if (value=='@')
+            {
+                childMap->current_location.col=col-colOffset;
+                childMap->current_location.row=row-rowOffset;
+            }
+            else if (isDoor(value))
+            {
+                char index=value-MIN_DOOR;
+                childMap->doors[index]=DOOR_EXISTS;
+                childMap->door_location[index].col=col-colOffset;
+                childMap->door_location[index].row=row-rowOffset;
+            }
+            else if (isKey(value))
+            {
+                char index=value-MIN_KEY;
+                childMap->keys[index]=KEY_NOT_OBTAINED;
+                childMap->key_location[index].col=col-colOffset;
+                childMap->key_location[index].row=row-rowOffset;
+            }
+        }
+    }        
+}
+
+
+void split_map_to_multi_maps(map * parentMap, multi_map * childMaps)
+{
+    for (int i=0; i<NUM_SUBMAPS; i++)
+        initStartMap(&childMaps->submaps[i]);
+    // after loading, the parentMap current location will point to the bottom-right @ sign.
+    //   need to subtract 1 row and 1 column from that location to get the centerpoint
+    int mid_col=parentMap->current_location.col-1;
+    int mid_row=parentMap->current_location.row-1;
+    printf("mid_col is %d. mid_row is %d\n", mid_col, mid_row);
+    
+    // load top-left - cols from 0 to mid_col, rows from 0 to mid_row
+    load_submap(parentMap, &childMaps->submaps[TOP_LEFT], 0, mid_col+1, 0, mid_row+1);
+    
+    // load top-right - cols from mid_col to parent.max_col, rows from 0 to mid_row
+    load_submap(parentMap, &childMaps->submaps[TOP_RIGHT], mid_col, parentMap->max_col, 0, mid_row+1);
+    
+    // load bottom-left. cols from 0 to mid_col, rows from mid_row to parent.max_row
+    load_submap(parentMap, &childMaps->submaps[BOTTOM_LEFT], 0, mid_col+1, mid_row, parentMap->max_row);
+    
+    // load bottom-right. cols from mid_col to parent.max_col, rows from mid_row to parent.max_row
+    load_submap(parentMap, &childMaps->submaps[BOTTOM_RIGHT], mid_col, parentMap->max_col, mid_row, parentMap->max_row);
+    
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        childMaps->door_submaps[i]=NONE;
+        childMaps->key_submaps[i]=NONE;
+        for (int j=0; j<NUM_SUBMAPS; j++)
+        {
+            if (childMaps->submaps[j].keys[i]!=DOES_NOT_EXIST)
+                childMaps->key_submaps[i]=j;
+            if (childMaps->submaps[j].doors[i]!=DOES_NOT_EXIST)
+                childMaps->door_submaps[i]=j;
+        }
+    }
+}
+
+void buildAndWorkMultiMaps(multi_map * multiMap, cache * myCache)
+{
+    for (int i=0; i<NUM_SUBMAPS; i++)
+    {
+        calculateStartToKeyDistances(&multiMap->submaps[i]);
+        calculateKeyToKeyDistances(&multiMap->submaps[i]);
+    }
+    
+    multi_paths myPaths;
+    for (int i=0; i<NUM_SUBMAPS; i++)
+    {
+        myPaths.current_path_len[i]=0;
+    }
+    
+    int best_steps=0;//recursive_build_cache(parentMap, myCache, NULL, 0);
+    printf("best_steps after recursion is %d\n", best_steps);
+    //makeChildrenMaps(parentMap);
+        
+    multiMap->best_multi_map_steps=best_steps;
+    //deleteChildrenMaps(parentMap);
+}
+
+int build_multi_keys_to_get(multi_map * multiMap, multi_paths * paths, int * keys_to_get)
+{
+    int num_remaining=0;
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        keys_to_get[i]=parentMap->keys[i];
+        if (keys_to_get[i]!=DOES_NOT_EXIST)
+        {
+            num_remaining++;
+        }
+    }
+    for (int j=0; j<NUM_SUBMAPS; j++)
+    {
+        for (int i=0; i<paths->current_path_lens[j]; i++)
+        {
+            keys_to_get[paths->current_paths[j][i]-MIN_KEY]=KEY_OBTAINED;
+            num_remaining--;
+        }
+    }
+    //printf("returning %d keys to get\n", num_remaining);
+    return num_remaining;
+}
+
+void dupe_multi_paths(multi_paths * target, multi_paths * source)
+{
+    for (int i=0; i<NUM_SUBMAPS; i++)
+    {
+        target->current_path_lens[i]=source->current_path_lens[i];
+        for (int j=0; j<target->current_path_lens[i]; j++)
+        {
+            target->current_path[i][j]=source->current_path[i][j];
+        }
+    }
+}
+
+int recursive_build_multi_cache(multi_map * multiMap, cache * myCache, multi_paths * current_paths)
+{
+    int keys_to_get[26];
+    int num_keys_to_get=build_multi_keys_to_get(multiMap, current_paths, keys_to_get);
+    int current_position[NUM_SUBMAPS];
+    for (int i=0; i<NUM_SUBMAPS; i++)
+        current_position[i]=(current_paths->current_path_len[i]==0?'@':current_paths->current_path[current_paths->current_path_len[i]-1]);
+    //printf("Current path is :");
+    //for (int i=0; i<current_path_len; i++)
+    //    printf("%c", current_path[i]);
+    //printf("\n");
+    //printf("There are %d keys to get at position %c\n", num_keys_to_get, current_position);
+    if (num_keys_to_get==1) // special case - 1 key to get. just insert the distance from the current position to it.
+    {
+        for (int i=0; i<MAX_KEYS; i++)
+        {
+            // TODO: resume here. Need to add a check for if from start or from a non-start position. also need to select the right submap.
+            if (keys_to_get[i]==KEY_NOT_OBTAINED)
+            {
+                int submap=multiMap->key_submaps[i];
+                return parentMap->steps_from_key_to_key[current_position-MIN_KEY][i];
+            }
+        }
+    }
+    // if here, num_keys_to_get is 2 or greater
+    //    first check if there is a cache hit
+    cache_node * hit = find_cache(myCache, current_position, keys_to_get);
+    if (hit != NULL)
+        return hit->best_steps;
+    // if here, we have a cache miss. Need to recusrively go in, one option at a time.
+    int next_path[MAX_KEYS];
+    int next_path_len;
+    int lowest_steps=999999999;
+    
+    for (int i=0; i<current_path_len; i++)
+        next_path[i]=current_path[i];
+    next_path_len=current_path_len+1;
+    
+    for (int i=0; i<MAX_KEYS; i++)
+    {
+        if (keys_to_get[i]!=KEY_NOT_OBTAINED)
+            continue;
+        //printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
+
+        int not_required_key=0;
+        for (int j=0; j<MAX_KEYS; j++)
+        {
+            //if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED)
+            //{
+            //    printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
+            //    printf("keys_to_get[%d] is %d. KEY_OBTAINED is %d\n", j, keys_to_get[j], KEY_OBTAINED);
+            //    //printf(doors_blocking_keys);
+            //}
+            
+            if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
+            {
+            //    printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
+                not_required_key=1;
+                break;
+            }
+        }
+        if (not_required_key==1)
+            continue;
+
+        // set up the next step
+        int steps_current_to_next=0;
+        if (current_path_len==0)
+            steps_current_to_next=parentMap->steps_from_start_to_key[i]; // the steps from start to i
+        else 
+            steps_current_to_next=parentMap->steps_from_key_to_key[current_position-MIN_KEY][i]; // the steps from the last position to get to i
+        keys_to_get[i]=KEY_OBTAINED;
+        next_path[next_path_len-1]=i+MIN_KEY;
+        //printf("Calling recusrively from path: ");
+        //for (int i=0; i<current_path_len; i++)
+        //    printf("%c", current_path[i]);
+        //printf("\n");
+        
+        int steps_next_to_end=recursive_build_cache(parentMap, myCache, next_path, next_path_len);
+        int total_steps=steps_current_to_next+steps_next_to_end;
+        if (total_steps < lowest_steps)
+            lowest_steps = total_steps;
+        
+        // reset off the next step
+        keys_to_get[i]=KEY_NOT_OBTAINED;
+    }
+    // now we have the lowest steps at this point, so add it to the cache
+    insert_cache(myCache, current_position, keys_to_get, lowest_steps);
+    return lowest_steps;
+}

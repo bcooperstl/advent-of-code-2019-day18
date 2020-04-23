@@ -377,18 +377,24 @@ void buildAndWorkChildrenMaps(map * parentMap, int level, cache * myCache)
 
 int build_keys_to_get(map * parentMap, int * current_path, int current_path_len, int * keys_to_get)
 {
+    //printf("building keys_to_get\n");
     int num_remaining=0;
     for (int i=0; i<MAX_KEYS; i++)
     {
         keys_to_get[i]=parentMap->keys[i];
         if (keys_to_get[i]!=DOES_NOT_EXIST)
+        {
+            //printf("incrementing for %c\n", i+MIN_KEY);
             num_remaining++;
+        }
     }
     for (int i=0; i<current_path_len; i++)
     {
-        keys_to_get[i-MIN_KEY]=KEY_OBTAINED;
+        //printf("decrementing for %c in current path position %d\n", current_path[i], i);
+        keys_to_get[current_path[i]-MIN_KEY]=KEY_OBTAINED;
         num_remaining--;
     }
+    //printf("returning %d keys to get\n", num_remaining);
     return num_remaining;
 }
 
@@ -397,11 +403,11 @@ int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, 
     int keys_to_get[26];
     int num_keys_to_get=build_keys_to_get(parentMap, current_path, current_path_len, keys_to_get);
     int current_position=(current_path_len==0?'@':current_path[current_path_len-1]);
-    printf("Current path is :");
-    for (int i=0; i<current_path_len; i++)
-        printf("%c", current_path[i]);
-    printf("\n");
-    printf("There are %d keys to get at position %c\n", num_keys_to_get, current_position);
+    //printf("Current path is :");
+    //for (int i=0; i<current_path_len; i++)
+    //    printf("%c", current_path[i]);
+    //printf("\n");
+    //printf("There are %d keys to get at position %c\n", num_keys_to_get, current_position);
     if (num_keys_to_get==1) // special case - 1 key to get. just insert the distance from the current position to it.
     {
         for (int i=0; i<MAX_KEYS; i++)
@@ -428,22 +434,21 @@ int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, 
     {
         if (keys_to_get[i]!=KEY_NOT_OBTAINED)
             continue;
-        printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
+        //printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
 
         int not_required_key=0;
         for (int j=0; j<MAX_KEYS; j++)
         {
-            if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED)
-            {
-                printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
-                printf("keys_to_get[j] is %d. KEY_OBTAINED is %d\n", keys_to_get[j], KEY_OBTAINED);
-                //printf(doors_blocking_keys);
-            }
+            //if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED)
+            //{
+            //    printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
+            //    printf("keys_to_get[%d] is %d. KEY_OBTAINED is %d\n", j, keys_to_get[j], KEY_OBTAINED);
+            //    //printf(doors_blocking_keys);
+            //}
             
-            //TODO: fix this
             if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
             {
-                printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
+            //    printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
                 not_required_key=1;
                 break;
             }
@@ -459,10 +464,10 @@ int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, 
             steps_current_to_next=parentMap->steps_from_key_to_key[current_position-MIN_KEY][i]; // the steps from the last position to get to i
         keys_to_get[i]=KEY_OBTAINED;
         next_path[next_path_len-1]=i+MIN_KEY;
-        printf("Calling recusrively from path: ");
-        for (int i=0; i<current_path_len; i++)
-            printf("%c", current_path[i]);
-        printf("\n");
+        //printf("Calling recusrively from path: ");
+        //for (int i=0; i<current_path_len; i++)
+        //    printf("%c", current_path[i]);
+        //printf("\n");
         
         int steps_next_to_end=recursive_build_cache(parentMap, myCache, next_path, next_path_len);
         int total_steps=steps_current_to_next+steps_next_to_end;
@@ -470,7 +475,7 @@ int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, 
             lowest_steps = total_steps;
         
         // reset off the next step
-        keys_to_get[i]==KEY_NOT_OBTAINED;
+        keys_to_get[i]=KEY_NOT_OBTAINED;
     }
     // now we have the lowest steps at this point, so add it to the cache
     insert_cache(myCache, current_position, keys_to_get, lowest_steps);

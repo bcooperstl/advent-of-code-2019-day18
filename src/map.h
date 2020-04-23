@@ -45,7 +45,7 @@ struct map
     int doors[MAX_KEYS]; // 26 character array for A-Z
     point door_location[MAX_KEYS];
     int keys[MAX_KEYS]; // 26 character array for a-z
-    int doors_blocking_keys[MAX_KEYS][MAX_KEYS];
+    int doors_blocking_keys[MAX_KEYS][MAX_KEYS]; // if doors_blocking_keys[a][b] is 1, that means door B blocks key a, so key b must be picked up before key a
     point key_location[MAX_KEYS];
     int steps_to_key[MAX_KEYS];
     struct map * parent;

@@ -729,7 +729,7 @@ void buildAndWorkMultiMaps(multi_map * multiMap, multi_cache * myCache)
         myPaths.current_path_lens[i]=0;
     }
     
-    int best_steps=0;//recursive_build_cache(parentMap, myCache, NULL, 0);
+    int best_steps=recursive_build_multi_cache(multiMap, myCache, &myPaths);
     printf("best_steps after recursion is %d\n", best_steps);
     //makeChildrenMaps(parentMap);
         

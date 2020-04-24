@@ -715,7 +715,7 @@ void split_map_to_multi_maps(map * parentMap, multi_map * childMaps)
     }
 }
 
-void buildAndWorkMultiMaps(multi_map * multiMap, cache * myCache)
+void buildAndWorkMultiMaps(multi_map * multiMap, multi_cache * myCache)
 {
     for (int i=0; i<NUM_SUBMAPS; i++)
     {
@@ -726,7 +726,7 @@ void buildAndWorkMultiMaps(multi_map * multiMap, cache * myCache)
     multi_paths myPaths;
     for (int i=0; i<NUM_SUBMAPS; i++)
     {
-        myPaths.current_path_len[i]=0;
+        myPaths.current_path_lens[i]=0;
     }
     
     int best_steps=0;//recursive_build_cache(parentMap, myCache, NULL, 0);
@@ -742,9 +742,9 @@ int build_multi_keys_to_get(multi_map * multiMap, multi_paths * paths, int * key
     int num_remaining=0;
     for (int i=0; i<MAX_KEYS; i++)
     {
-        keys_to_get[i]=parentMap->keys[i];
-        if (keys_to_get[i]!=DOES_NOT_EXIST)
+        if (multiMap->key_submaps[i]!=NONE)
         {
+            keys_to_get[i]=multiMap->submaps[multiMap->key_submaps[i]].keys[i];
             num_remaining++;
         }
     }
@@ -767,18 +767,18 @@ void dupe_multi_paths(multi_paths * target, multi_paths * source)
         target->current_path_lens[i]=source->current_path_lens[i];
         for (int j=0; j<target->current_path_lens[i]; j++)
         {
-            target->current_path[i][j]=source->current_path[i][j];
+            target->current_paths[i][j]=source->current_paths[i][j];
         }
     }
 }
 
-int recursive_build_multi_cache(multi_map * multiMap, cache * myCache, multi_paths * current_paths)
+int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, multi_paths * current_multi_paths)
 {
     int keys_to_get[26];
-    int num_keys_to_get=build_multi_keys_to_get(multiMap, current_paths, keys_to_get);
+    int num_keys_to_get=build_multi_keys_to_get(multiMap, current_multi_paths, keys_to_get);
     int current_position[NUM_SUBMAPS];
     for (int i=0; i<NUM_SUBMAPS; i++)
-        current_position[i]=(current_paths->current_path_len[i]==0?'@':current_paths->current_path[current_paths->current_path_len[i]-1]);
+        current_position[i]=(current_multi_paths->current_path_lens[i]==0?'@':current_multi_paths->current_paths[i][current_multi_paths->current_path_lens[i]-1]);
     //printf("Current path is :");
     //for (int i=0; i<current_path_len; i++)
     //    printf("%c", current_path[i]);
@@ -792,23 +792,27 @@ int recursive_build_multi_cache(multi_map * multiMap, cache * myCache, multi_pat
             if (keys_to_get[i]==KEY_NOT_OBTAINED)
             {
                 int submap=multiMap->key_submaps[i];
-                return parentMap->steps_from_key_to_key[current_position-MIN_KEY][i];
+                if (current_position[submap]=='@')
+                {
+                    return multiMap->submaps[submap].steps_from_start_to_key[i];
+                }
+                else
+                {
+                    return multiMap->submaps[submap].steps_from_key_to_key[current_position[submap]-MIN_KEY][i];
+                }
             }
         }
     }
     // if here, num_keys_to_get is 2 or greater
     //    first check if there is a cache hit
-    cache_node * hit = find_cache(myCache, current_position, keys_to_get);
+    multi_cache_node * hit = find_multi_cache(myCache, current_position, keys_to_get);
     if (hit != NULL)
         return hit->best_steps;
     // if here, we have a cache miss. Need to recusrively go in, one option at a time.
-    int next_path[MAX_KEYS];
-    int next_path_len;
+    multi_paths next_paths;
     int lowest_steps=999999999;
     
-    for (int i=0; i<current_path_len; i++)
-        next_path[i]=current_path[i];
-    next_path_len=current_path_len+1;
+    dupe_multi_paths(&next_paths, current_multi_paths);
     
     for (int i=0; i<MAX_KEYS; i++)
     {
@@ -817,8 +821,13 @@ int recursive_build_multi_cache(multi_map * multiMap, cache * myCache, multi_pat
         //printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
 
         int not_required_key=0;
+        int key_i_submap=multiMap->key_submaps[i];
+        
         for (int j=0; j<MAX_KEYS; j++)
         {
+            int door_j_submap=multiMap->door_submaps[j];
+            int key_j_submap=multiMap->key_submaps[j];
+            
             //if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED)
             //{
             //    printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
@@ -826,38 +835,54 @@ int recursive_build_multi_cache(multi_map * multiMap, cache * myCache, multi_pat
             //    //printf(doors_blocking_keys);
             //}
             
-            if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
+            if (key_i_submap == door_j_submap)
             {
-            //    printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
-                not_required_key=1;
-                break;
+                // only care if they interact in the same submap
+                if (multiMap->submaps[key_i_submap].doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
+                {
+                //    printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
+                    not_required_key=1;
+                    break;
+                }
             }
         }
+        
         if (not_required_key==1)
             continue;
 
         // set up the next step
         int steps_current_to_next=0;
-        if (current_path_len==0)
-            steps_current_to_next=parentMap->steps_from_start_to_key[i]; // the steps from start to i
-        else 
-            steps_current_to_next=parentMap->steps_from_key_to_key[current_position-MIN_KEY][i]; // the steps from the last position to get to i
+        if (current_position[key_i_submap]=='@')
+        {
+            steps_current_to_next=multiMap->submaps[key_i_submap].steps_from_start_to_key[i];
+        }
+        else
+        {
+            steps_current_to_next=multiMap->submaps[key_i_submap].steps_from_key_to_key[current_position[key_i_submap]-MIN_KEY][key_i_submap];
+        }
+
         keys_to_get[i]=KEY_OBTAINED;
-        next_path[next_path_len-1]=i+MIN_KEY;
+        
+        next_paths.current_paths[key_i_submap][next_paths.current_path_lens[key_i_submap]]=i+MIN_KEY;
+        next_paths.current_path_lens[key_i_submap]++;
+        
         //printf("Calling recusrively from path: ");
         //for (int i=0; i<current_path_len; i++)
         //    printf("%c", current_path[i]);
         //printf("\n");
         
-        int steps_next_to_end=recursive_build_cache(parentMap, myCache, next_path, next_path_len);
+        int steps_next_to_end=recursive_build_multi_cache(multiMap, myCache, &next_paths);
         int total_steps=steps_current_to_next+steps_next_to_end;
         if (total_steps < lowest_steps)
             lowest_steps = total_steps;
         
         // reset off the next step
         keys_to_get[i]=KEY_NOT_OBTAINED;
+        next_paths.current_path_lens[key_i_submap]--;
     }
+
     // now we have the lowest steps at this point, so add it to the cache
-    insert_cache(myCache, current_position, keys_to_get, lowest_steps);
+    insert_multi_cache(myCache, current_position, keys_to_get, lowest_steps);
     return lowest_steps;
 }
+

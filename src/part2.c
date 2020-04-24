@@ -18,8 +18,8 @@ int main (int argc, char * argv[])
     
     
     
-    cache myCache;
-    init_cache(&myCache);
+    multi_cache myCache;
+    init_multi_cache(&myCache);
     
     map * bestMap = NULL;
     
@@ -92,7 +92,7 @@ int main (int argc, char * argv[])
     printf("The best distance is %d\n", startMap.best_child_map_steps);
     
     deleteChildrenMaps(&startMap);
-    delete_cache(&myCache);
+    delete_multi_cache(&myCache);
     
     return 0;
 }

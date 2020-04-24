@@ -34,6 +34,7 @@
 #define NONE -1
 
 typedef struct cache cache;
+typedef struct multi_cache multi_cache;
 
 struct point {
     int col;
@@ -102,9 +103,11 @@ void print_multi_map(multi_map * map);
 int build_keys_to_get(map * parentMap, int * current_path, int current_path_len, int * keys_to_get);
 int recusrive_work_it(map * map, int * current_path, int current_path_len, int current_path_steps, int best_path_steps);
 int recursive_build_cache(map * parentMap, cache * myCache, int * current_path, int current_path_len);
+
 void split_map_to_multi_maps(map * parentMap, multi_map * childMaps);
 int build_multi_keys_to_get(multi_map * multiMap, multi_paths * paths, int * keys_to_get);
-void buildAndWorkMultiMaps(multi_map * multiMap, cache * myCache);
+void buildAndWorkMultiMaps(multi_map * multiMap, multi_cache * myCache);
 void dupe_multi_paths(multi_paths * target, multi_paths * source);
+int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, multi_paths * current_paths);
 
 #endif

@@ -792,17 +792,15 @@ void print_multi_paths(multi_paths * paths)
 
 int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, multi_paths * current_multi_paths)
 {
-    //print_multi_paths(current_multi_paths);
     int keys_to_get[26];
     int num_keys_to_get=build_multi_keys_to_get(multiMap, current_multi_paths, keys_to_get);
     int current_position[NUM_SUBMAPS];
     for (int i=0; i<NUM_SUBMAPS; i++)
         current_position[i]=(current_multi_paths->current_path_lens[i]==0?'@':current_multi_paths->current_paths[i][current_multi_paths->current_path_lens[i]-1]);
-    //printf("Current path is :");
-    //for (int i=0; i<current_path_len; i++)
-    //    printf("%c", current_path[i]);
-    //printf("\n");
-    //printf("There are %d keys to get at position %c\n", num_keys_to_get, current_position);
+    printf("Current path is :");
+    print_multi_paths(current_multi_paths);
+    printf("There are %d keys to get\n", num_keys_to_get);
+    
     if (num_keys_to_get==1) // special case - 1 key to get. just insert the distance from the current position to it.
     {
         for (int i=0; i<MAX_KEYS; i++)
@@ -836,7 +834,7 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
     {
         if (keys_to_get[i]!=KEY_NOT_OBTAINED)
             continue;
-        //printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
+        printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
 
         int not_required_key=0;
         int key_i_submap=multiMap->key_submaps[i];
@@ -846,19 +844,19 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
             int door_j_submap=multiMap->door_submaps[j];
             int key_j_submap=multiMap->key_submaps[j];
             
-            //if (parentMap->doors_blocking_keys[i][j]==KEY_REQUIRED)
-            //{
-            //    printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
-            //    printf("keys_to_get[%d] is %d. KEY_OBTAINED is %d\n", j, keys_to_get[j], KEY_OBTAINED);
+            if (multiMap->submaps[key_i_submap].doors_blocking_keys[i][j]==KEY_REQUIRED)
+            {
+                printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
+                printf("keys_to_get[%d] is %d. KEY_OBTAINED is %d\n", j, keys_to_get[j], KEY_OBTAINED);
             //    //printf(doors_blocking_keys);
-            //}
+            }
             
             if (key_i_submap == door_j_submap)
             {
                 // only care if they interact in the same submap
                 if (multiMap->submaps[key_i_submap].doors_blocking_keys[i][j]==KEY_REQUIRED && keys_to_get[j]!=KEY_OBTAINED)
                 {
-                //    printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
+                    //printf("key %c is not available because key %c has not been visited\n", i+MIN_KEY, j+MIN_KEY);
                     not_required_key=1;
                     break;
                 }
@@ -876,7 +874,7 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
         }
         else
         {
-            steps_current_to_next=multiMap->submaps[key_i_submap].steps_from_key_to_key[current_position[key_i_submap]-MIN_KEY][key_i_submap];
+            steps_current_to_next=multiMap->submaps[key_i_submap].steps_from_key_to_key[current_position[key_i_submap]-MIN_KEY][i];
         }
 
         keys_to_get[i]=KEY_OBTAINED;

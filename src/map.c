@@ -797,9 +797,9 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
     int current_position[NUM_SUBMAPS];
     for (int i=0; i<NUM_SUBMAPS; i++)
         current_position[i]=(current_multi_paths->current_path_lens[i]==0?'@':current_multi_paths->current_paths[i][current_multi_paths->current_path_lens[i]-1]);
-    printf("Current path is :");
-    print_multi_paths(current_multi_paths);
-    printf("There are %d keys to get\n", num_keys_to_get);
+    //printf("Current path is :");
+    //print_multi_paths(current_multi_paths);
+    //printf("There are %d keys to get\n", num_keys_to_get);
     
     if (num_keys_to_get==1) // special case - 1 key to get. just insert the distance from the current position to it.
     {
@@ -834,7 +834,7 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
     {
         if (keys_to_get[i]!=KEY_NOT_OBTAINED)
             continue;
-        printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
+        //printf("keys_to_get[%c] is KEY_NOT_OBTAINED\n", i+MIN_KEY);
 
         int not_required_key=0;
         int key_i_submap=multiMap->key_submaps[i];
@@ -844,12 +844,12 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
             int door_j_submap=multiMap->door_submaps[j];
             int key_j_submap=multiMap->key_submaps[j];
             
-            if (multiMap->submaps[key_i_submap].doors_blocking_keys[i][j]==KEY_REQUIRED)
-            {
-                printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
-                printf("keys_to_get[%d] is %d. KEY_OBTAINED is %d\n", j, keys_to_get[j], KEY_OBTAINED);
-            //    //printf(doors_blocking_keys);
-            }
+            //if (multiMap->submaps[key_i_submap].doors_blocking_keys[i][j]==KEY_REQUIRED)
+            //{
+            //    printf("key %c is required before key %c\n", j+MIN_KEY, i+MIN_KEY);
+            //    printf("keys_to_get[%d] is %d. KEY_OBTAINED is %d\n", j, keys_to_get[j], KEY_OBTAINED);
+            ////    //printf(doors_blocking_keys);
+            //}
             
             if (key_i_submap == door_j_submap)
             {

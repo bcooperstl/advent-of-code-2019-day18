@@ -747,6 +747,10 @@ int build_multi_keys_to_get(multi_map * multiMap, multi_paths * paths, int * key
             keys_to_get[i]=multiMap->submaps[multiMap->key_submaps[i]].keys[i];
             num_remaining++;
         }
+        else
+        {
+            keys_to_get[i]=DOES_NOT_EXIST;
+        }
     }
     for (int j=0; j<NUM_SUBMAPS; j++)
     {
@@ -772,8 +776,20 @@ void dupe_multi_paths(multi_paths * target, multi_paths * source)
     }
 }
 
+void print_multi_paths(multi_paths * paths)
+{
+    for (int i=0; i<NUM_SUBMAPS; i++)
+    {
+        printf("Path %d has %d elements: ", i, paths->current_path_lens[i]);
+        for (int j=0; j<paths->current_path_lens[i]; j++)
+            printf("%c ", paths->current_paths[i][j]);
+        printf("\n");
+    }
+}
+
 int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, multi_paths * current_multi_paths)
 {
+    //print_multi_paths(current_multi_paths);
     int keys_to_get[26];
     int num_keys_to_get=build_multi_keys_to_get(multiMap, current_multi_paths, keys_to_get);
     int current_position[NUM_SUBMAPS];
@@ -788,7 +804,6 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
     {
         for (int i=0; i<MAX_KEYS; i++)
         {
-            // TODO: resume here. Need to add a check for if from start or from a non-start position. also need to select the right submap.
             if (keys_to_get[i]==KEY_NOT_OBTAINED)
             {
                 int submap=multiMap->key_submaps[i];

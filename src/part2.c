@@ -89,7 +89,7 @@ int main (int argc, char * argv[])
     buildAndWorkMultiMaps(&startMultiMap,&myCache);
     //bestMap=findBestMap(&startMap);
     
-    printf("The best distance is %d\n", startMap.best_child_map_steps);
+    printf("The best distance is %d\n", startMultiMap.best_multi_map_steps);
     
     deleteChildrenMaps(&startMap);
     delete_multi_cache(&myCache);

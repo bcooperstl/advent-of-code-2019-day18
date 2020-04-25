@@ -641,43 +641,46 @@ void print_multi_map(multi_map * theMap)
     print_map(&theMap->submaps[3]);
 }
 
-void load_submap(map * parentMap, map * childMap, int minCol, int maxCol, int minRow, int maxRow)
+void load_submap(map * parentMap, map * childMap, int startCol, int startRow)
 {
-    int colOffset=minCol;
-    int rowOffset=minRow;
+    childMap->current_location.col=startCol;
+    childMap->current_location.row=startRow;
     
-    childMap->max_col=maxCol-minCol;
-    childMap->max_row=maxRow-minRow;
+    childMap->max_col=parentMap->max_col;
+    childMap->max_row=parentMap->max_row;
     
-    for (int col=minCol; col<maxCol; col++)
+    for (int col=0; col<parentMap->max_col; col++)
     {
-        for (int row=minRow; row<maxRow; row++)
+        for (int row=0; row<parentMap->max_row; row++)
         {
-            char value=parentMap->layout[col][row];
-            childMap->layout[col-colOffset][row-rowOffset]=value;
-            if (value=='@')
-            {
-                childMap->current_location.col=col-colOffset;
-                childMap->current_location.row=row-rowOffset;
-            }
-            else if (isDoor(value))
+            childMap->layout[col][row]=parentMap->layout[col][row];
+        }
+    }
+    
+    makeNonReachableAreasWalls(childMap);
+    
+    for (int col=0; col<parentMap->max_col; col++)
+    {
+        for (int row=0; row<parentMap->max_row; row++)
+        {
+            char value=childMap->layout[col][row];
+            if (isDoor(value))
             {
                 char index=value-MIN_DOOR;
                 childMap->doors[index]=DOOR_EXISTS;
-                childMap->door_location[index].col=col-colOffset;
-                childMap->door_location[index].row=row-rowOffset;
+                childMap->door_location[index].col=col;
+                childMap->door_location[index].row=row;
             }
             else if (isKey(value))
             {
                 char index=value-MIN_KEY;
                 childMap->keys[index]=KEY_NOT_OBTAINED;
-                childMap->key_location[index].col=col-colOffset;
-                childMap->key_location[index].row=row-rowOffset;
+                childMap->key_location[index].col=col;
+                childMap->key_location[index].row=row;
             }
         }
     }        
 }
-
 
 void split_map_to_multi_maps(map * parentMap, multi_map * childMaps)
 {
@@ -689,17 +692,17 @@ void split_map_to_multi_maps(map * parentMap, multi_map * childMaps)
     int mid_row=parentMap->current_location.row-1;
     printf("mid_col is %d. mid_row is %d\n", mid_col, mid_row);
     
-    // load top-left - cols from 0 to mid_col, rows from 0 to mid_row
-    load_submap(parentMap, &childMaps->submaps[TOP_LEFT], 0, mid_col+1, 0, mid_row+1);
+    // load top-left
+    load_submap(parentMap, &childMaps->submaps[TOP_LEFT], mid_col-1, mid_row-1);
     
-    // load top-right - cols from mid_col to parent.max_col, rows from 0 to mid_row
-    load_submap(parentMap, &childMaps->submaps[TOP_RIGHT], mid_col, parentMap->max_col, 0, mid_row+1);
+    // load top-right
+    load_submap(parentMap, &childMaps->submaps[TOP_RIGHT], mid_col+1, mid_row-1);
     
-    // load bottom-left. cols from 0 to mid_col, rows from mid_row to parent.max_row
-    load_submap(parentMap, &childMaps->submaps[BOTTOM_LEFT], 0, mid_col+1, mid_row, parentMap->max_row);
+    // load bottom-left
+    load_submap(parentMap, &childMaps->submaps[BOTTOM_LEFT], mid_col-1, mid_row+1);
     
     // load bottom-right. cols from mid_col to parent.max_col, rows from mid_row to parent.max_row
-    load_submap(parentMap, &childMaps->submaps[BOTTOM_RIGHT], mid_col, parentMap->max_col, mid_row, parentMap->max_row);
+    load_submap(parentMap, &childMaps->submaps[BOTTOM_RIGHT], mid_col+1, mid_row+1);
     
     for (int i=0; i<MAX_KEYS; i++)
     {
@@ -901,3 +904,78 @@ int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, mul
     return lowest_steps;
 }
 
+void makeNonReachableAreasWalls(map * map)
+{
+    int reachable[MAX_MAP_DIMENSION][MAX_MAP_DIMENSION];
+    for (int col=0; col<map->max_col; col++)
+    {
+        for (int row=0; row<map->max_row; row++)
+        {
+            reachable[col][row]=NOT_REACHABLE;
+        }
+    }
+        
+    point location=map->current_location;
+    reachable[location.col][location.row]=REACHABLE;
+    int workToDo = 1;
+    while(workToDo != 0)
+    {
+        workToDo=0;
+        for (int col=0; col<map->max_col; col++)
+        {
+            for (int row=0; row<map->max_row; row++)
+            {
+                if (reachable[col][row]==REACHABLE)
+                {
+                    // up
+                    if (row > 0)
+                    {
+                        if ((!isWall(map, col, row-1, 0)) && (reachable[col][row-1]==NOT_REACHABLE))
+                        {
+                            workToDo=1;
+                            reachable[col][row-1]=REACHABLE;
+                        }
+                    }
+                    // down
+                    if (row < map->max_row-1)
+                    {
+                        if ((!isWall(map, col, row+1, 0)) && (reachable[col][row+1]==NOT_REACHABLE))
+                        {
+                            workToDo=1;
+                            reachable[col][row+1]=REACHABLE;
+                        }
+                    }
+                    // left
+                    if (col > 0)
+                    {
+                        if ((!isWall(map, col-1, row, 0)) && (reachable[col-1][row]==NOT_REACHABLE))
+                        {
+                            workToDo=1;
+                            reachable[col-1][row]=REACHABLE;
+                        }
+                    }
+                    // right
+                    if (col < map->max_col-1)
+                    {
+                        if ((!isWall(map, col+1, row, 0)) && (reachable[col+1][row]==NOT_REACHABLE))
+                        {
+                            workToDo=1;
+                            reachable[col+1][row]=REACHABLE;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int col=0; col<map->max_col; col++)
+    {
+        for (int row=0; row<map->max_row; row++)
+        {
+            if ((!isWall(map, col, row, 0)) && (reachable[col][row]==NOT_REACHABLE))
+            {
+                map->layout[col][row]=WALL;
+            }
+        }
+    }
+}

@@ -18,6 +18,9 @@
 
 #define NOT_WORKED -1
 
+#define REACHABLE 1
+#define NOT_REACHABLE 2
+
 #define WALL '#'
 #define SPACE '.'
 #define ME '@'
@@ -109,5 +112,6 @@ int build_multi_keys_to_get(multi_map * multiMap, multi_paths * paths, int * key
 void buildAndWorkMultiMaps(multi_map * multiMap, multi_cache * myCache);
 void dupe_multi_paths(multi_paths * target, multi_paths * source);
 int recursive_build_multi_cache(multi_map * multiMap, multi_cache * myCache, multi_paths * current_paths);
+void makeNonReachableAreasWalls(map * map);
 
 #endif
